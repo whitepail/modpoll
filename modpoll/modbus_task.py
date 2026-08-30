@@ -184,6 +184,8 @@ class Poller:
 
         decode_methods = {
             "uint16": decoder.decode_16bit_uint,
+            "uint8": decoder.decode_8bit_uint,
+            "int8": decoder.decode_8bit_int,
             "int16": decoder.decode_16bit_int,
             "uint32": decoder.decode_32bit_uint,
             "int32": decoder.decode_32bit_int,
