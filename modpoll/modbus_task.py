@@ -231,6 +231,7 @@ class Reference:
         rw: str,
         unit: str,
         scale: float,
+        shift_val: float,
     ):
         self.device = device
         self.name = ref_name
@@ -258,6 +259,7 @@ class Reference:
         self.unit = unit
         self.scale = scale
         self.val = None
+        self.shift_val = shift_val
         self.last_val = None
 
     def __eq__(self, other):
@@ -307,6 +309,11 @@ class Reference:
         if self.scale and not isinstance(v, bool):
             try:
                 v = v * float(self.scale)
+            except (ValueError, TypeError):
+                pass
+        if self.shift_val and not isinstance(v, bool):
+            try:
+                v = v + float(self.shift_val)
             except (ValueError, TypeError):
                 pass
         self.last_val = self.val
@@ -470,7 +477,11 @@ class ModbusHandler:
             scale = float(row[6]) if len(row) > 6 else None
         except ValueError:
             scale = None
-        return Reference(current_device, ref_name, address, dtype, rw, unit, scale)
+        try:
+            shift_val = float(row[7]) if len(row) > 7 else None
+        except ValueError:
+            shift_val = None
+        return Reference(current_device, ref_name, address, dtype, rw, unit, scale, shift_val)
 
     def _validate_reference(self, ref, current_poller):
         if ref in current_poller.readableReferences:
