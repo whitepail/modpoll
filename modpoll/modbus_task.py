@@ -261,6 +261,10 @@ class Reference:
         self.val = None
         self.shift_val = shift_val
         self.last_val = None
+        self.poller = None
+
+    def add_poller(self, poller: "Poller"):
+        self.poller = poller
 
     def __eq__(self, other):
         if isinstance(other, Reference):
@@ -318,6 +322,19 @@ class Reference:
                 pass
         self.last_val = self.val
         self.val = v
+
+    def update_value_write(self, v):
+        if self.scale and not isinstance(v, bool):
+            try:
+                v = v / float(self.scale)
+            except (ValueError, TypeError):
+                pass
+        if self.shift_val and not isinstance(v, bool):
+            try:
+                v = v - float(self.shift_val)
+            except (ValueError, TypeError):
+                pass
+        return v
 
 
 class ModbusHandler:
@@ -407,6 +424,8 @@ class ModbusHandler:
                     if ref and self._validate_reference(ref, current_poller):
                         if "r" in ref.rw.lower():
                             current_poller.add_readable_reference(ref)
+                        if "w" in ref.rw.lower():
+                            ref.add_poller(current_poller)
                         current_device.add_reference_mapping(ref)
                         self.logger.debug(
                             f"Add reference {ref.name} to device {current_device.name}"
@@ -529,7 +548,7 @@ class ModbusHandler:
                     if not self.connect():
                         return False
                     result = self.modbus_client.write_coil(
-                        address, value, unit=dev.devid
+                        address, value, slave=dev.devid
                     )
                     return not result.isError()
                 except ModbusException as e:
@@ -547,7 +566,7 @@ class ModbusHandler:
                     if not self.connect():
                         return False
                     result = self.modbus_client.write_register(
-                        address, value, unit=dev.devid
+                        address, value, slave=dev.devid
                     )
                     return not result.isError()
                 except ModbusException as e:

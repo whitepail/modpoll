@@ -6,7 +6,7 @@ import sys
 
 from .arg_parser import get_parser
 from .mqtt_task import MqttHandler
-from .modbus_task import setup_modbus_handlers
+from .modbus_task import setup_modbus_handlers, Reference, Poller
 
 from . import __version__
 from .utils import set_threading_event, delay_thread, on_threading_event, get_utc_time
@@ -148,37 +148,67 @@ def app(name="modpoll"):
                     logger.info(
                         f"Received request to write data for device {device_name}"
                     )
+                    group_count = len(match.groups())
                     try:
-                        reg = json.loads(payload)
-                        object_type = reg["object_type"]
-                        address = reg["address"]
-                        value = reg["value"]
+                        if group_count > 1:
+                            fieldname = match.group(2)
+                            data_string = payload.decode("utf-8")
+                            try:
+                                value = float(data_string)
+                            except ValueError:
+                                logger.warning(f"Reference {fieldname} value is not float: {data_string}")
+                                break;
+                        else:
+                            reg = json.loads(payload)
+                            object_type = reg["object_type"]
+                            address = reg["address"]
+                            value = reg["value"]
 
                         device_found = False
                         for modbus_handler in modbus_handlers:
-                            if device_name in [
-                                dev.name for dev in modbus_handler.get_device_list()
-                            ]:
-                                device_found = True
-                                write_success = False
-                                if object_type == "coil":
-                                    write_success = modbus_handler.write_coil(
-                                        device_name, address, value
-                                    )
-                                elif object_type == "holding_register":
-                                    write_success = modbus_handler.write_register(
-                                        device_name, address, value
-                                    )
+                            for dev in modbus_handler.get_device_list():
+                                if dev.name == device_name:
+                                   device_found = True
+                                   write_success = False
+                                   if group_count > 1:
+                                       if isinstance(dev.references[fieldname], Reference):
+                                           if isinstance(dev.references[fieldname].poller, Poller):
+                                               if dev.references[fieldname].poller.fc == 1:
+                                                   object_type = "coil";
+                                               elif dev.references[fieldname].poller.fc == 3:
+                                                   object_type = "holding_register"
+                                               else:
+                                                   logger.warning(f"Reference {fieldname} has unknown type. Can write only coil and holding register")
+                                                   break;
+                                               address = dev.references[fieldname].address
+                                               value = dev.references[fieldname].update_value_write(value)
+                                               if value < 0:
+                                                 value = 65536 + value
+                                               logger.info(f"Trying to write reference {fieldname}: object_type={object_type}, device={device_name}, address={address}, value={value}")
+                                           else:
+                                               logger.warning(f"Unknown reference {fieldname} is not writeable")
+                                               break
+                                       else:
+                                           logger.warning(f"Unknown reference {fieldname} or reference not writeable")
+                                           break
+                                   if object_type == "coil":
+                                       write_success = modbus_handler.write_coil(
+                                           device_name, address, int(value)
+                                       )
+                                   elif object_type == "holding_register":
+                                       write_success = modbus_handler.write_register(
+                                           device_name, address, int(value)
+                                       )
 
-                                if write_success:
-                                    logger.info(
-                                        f"Successfully wrote {object_type}: device={device_name}, address={address}, value={value}"
-                                    )
-                                else:
-                                    logger.warning(
-                                        f"Failed to write {object_type}: device={device_name}, address={address}, value={value}"
-                                    )
-                                break
+                                   if write_success:
+                                       logger.info(
+                                           f"Successfully wrote {object_type}: device={device_name}, address={address}, value={value}"
+                                       )
+                                   else:
+                                       logger.warning(
+                                           f"Failed to write {object_type}: device={device_name}, address={address}, value={value}"
+                                       )
+                                   break
 
                         if not device_found:
                             logger.error(f"No device found with name: {device_name}")
