@@ -83,9 +83,9 @@ class Poller:
             if result and not result.isError():
                 if self.fc in (1, 2):
                     data = result.bits
-                    decoder = self._get_decoder(data)
-                    cur_ref = self.start_address
                     for ref in self.readableReferences:
+                        decoder = self._get_decoder(data)
+                        cur_ref = self.start_address
                         ref_count = math.ceil(self.size / 8)
                         # skip all registers before current reference address
                         while cur_ref < ref.address:
@@ -103,7 +103,6 @@ class Poller:
                             self.logger.error(
                                 f"Failed to decode value for reference: {ref.name}"
                             )
-                        cur_ref += ref.ref_width
                 else:  # Function codes 3 and 4
                     data = result.registers
                     # Sort refs by address to ensure predictable decoding order
@@ -176,11 +175,17 @@ class Poller:
         self, ref: "Reference", decoder: BinaryPayloadDecoder
     ):
         if ref.dtype == "bool" and ref.bit is not None:
-            # Bit references read a 16-bit register and extract one bit.
-            register_value = decoder.decode_16bit_uint()
-            bit_value = (register_value >> ref.bit) & 1
-            ref.update_value(bool(bit_value))
-            return
+            if self.fc not in (1, 2):
+                # Bit references read a 16-bit register and extract one bit.
+                register_value = decoder.decode_16bit_uint()
+                bit_value = (register_value >> ref.bit) & 1
+                ref.update_value(bool(bit_value))
+                return
+            else:
+                register_value = decoder.decode_bits()
+                bit_value = register_value[ref.bit]
+                ref.update_value(bool(bit_value))
+                return
 
         decode_methods = {
             "uint16": decoder.decode_16bit_uint,
