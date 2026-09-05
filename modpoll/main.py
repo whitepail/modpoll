@@ -153,11 +153,16 @@ def app(name="modpoll"):
                         if group_count > 1:
                             fieldname = match.group(2)
                             data_string = payload.decode("utf-8")
-                            try:
-                                value = float(data_string)
-                            except ValueError:
-                                logger.warning(f"Reference {fieldname} value is not float: {data_string}")
-                                break;
+                            if data_string == 'True':
+                                value = 1
+                            elif data_string == 'False':
+                                value = 0
+                            else:
+                                try:
+                                    value = float(data_string)
+                                except ValueError:
+                                    logger.warning(f"Reference {fieldname} value is not float: {data_string}")
+                                    continue;
                         else:
                             reg = json.loads(payload)
                             object_type = reg["object_type"]
@@ -173,14 +178,18 @@ def app(name="modpoll"):
                                    if group_count > 1:
                                        if isinstance(dev.references[fieldname], Reference):
                                            if isinstance(dev.references[fieldname].poller, Poller):
+                                               address = dev.references[fieldname].address
                                                if dev.references[fieldname].poller.fc == 1:
                                                    object_type = "coil";
+                                                   if dev.references[fieldname].bit is None:
+                                                       address = dev.references[fieldname].address * 8
+                                                   else:
+                                                       address = dev.references[fieldname].address * 8 + dev.references[fieldname].bit
                                                elif dev.references[fieldname].poller.fc == 3:
                                                    object_type = "holding_register"
                                                else:
                                                    logger.warning(f"Reference {fieldname} has unknown type. Can write only coil and holding register")
                                                    break;
-                                               address = dev.references[fieldname].address
                                                value = dev.references[fieldname].update_value_write(value)
                                                if value < 0:
                                                  value = 65536 + value

@@ -183,7 +183,7 @@ class Poller:
                 return
             else:
                 register_value = decoder.decode_bits()
-                bit_value = register_value[ref.bit]
+                bit_value = register_value[7-ref.bit]
                 ref.update_value(bool(bit_value))
                 return
 
@@ -329,14 +329,14 @@ class Reference:
         self.val = v
 
     def update_value_write(self, v):
-        if self.scale and not isinstance(v, bool):
-            try:
-                v = v / float(self.scale)
-            except (ValueError, TypeError):
-                pass
         if self.shift_val and not isinstance(v, bool):
             try:
                 v = v - float(self.shift_val)
+            except (ValueError, TypeError):
+                pass
+        if self.scale and not isinstance(v, bool):
+            try:
+                v = v / float(self.scale)
             except (ValueError, TypeError):
                 pass
         return v
