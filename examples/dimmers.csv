@@ -1,0 +1,11 @@
+device,dimmers,3
+poll,holding_register,0,4,BE_BE
+ref,kidsroom_small,0,uint16,rw,,0.002
+ref,kidsroom_big,1,uint16,rw,,0.002
+ref,shower,2,uint16,rw,,0.002
+ref,bathroom,3,uint16,rw,,0.002
+
+
+
+
+
