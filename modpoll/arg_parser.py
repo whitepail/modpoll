@@ -89,6 +89,22 @@ def get_parser():
         help="The file name to export references/registers",
     )
     parser.add_argument(
+        "--syslog-msgid",
+        default=None,
+        help="Syslog MSG id (for logging)",
+    )
+    parser.add_argument(
+        "--syslog-host",
+        default=None,
+        help="Syslog hostname (for logging)",
+    )
+    parser.add_argument(
+        "--syslog-port",
+        default=514,
+        type=int,
+        help="Syslog udp port (for logging)",
+    )
+    parser.add_argument(
         "--mqtt-version",
         choices=["3.1.1", "5.0"],
         default="3.1.1",

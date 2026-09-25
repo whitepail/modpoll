@@ -1,6 +1,8 @@
 import json
 import logging
 import logging.handlers
+from syslog_rfc5424_formatter import RFC5424Formatter
+
 import re
 import signal
 import sys
@@ -45,17 +47,14 @@ def app(name="modpoll"):
     global logger
     logger = logging.getLogger(__name__)
 
-    syslog_handler = logging.handlers.SysLogHandler(
-        address=('localhost', 5514), 
+    if args.syslog_host is not None:
+      syslog_handler = logging.handlers.SysLogHandler(
+        address=(args.syslog_host, args.syslog_port), 
         facility=logging.handlers.SysLogHandler.LOG_USER
-    )
-
-    formatter = logging.Formatter('%(name)s[%(process)d]: %(levelname)s %(message)s')
-    syslog_handler.setFormatter(formatter)
-
-    logger.addHandler(syslog_handler)
-
-    logger.info("Application successfully switched to syslog!")
+      )
+      syslog_handler.setFormatter(RFC5424Formatter(msgid=args.syslog_msgid))
+      logger.addHandler(syslog_handler)
+      logger.info("Application successfully switched to syslog!")
 
     # setup mqtt
     if not args.mqtt_host:
@@ -78,6 +77,9 @@ def app(name="modpoll"):
                 insecure=args.mqtt_insecure,
                 mqtt_version=args.mqtt_version,
                 log_level=args.loglevel,
+                syslog_host=args.syslog_host,
+                syslog_port=args.syslog_port,
+                syslog_msgid=args.syslog_msgid,
             )
             if mqtt_handler.setup() and mqtt_handler.connect():
                 logger.info("Connected to MQTT broker.")

@@ -4,6 +4,9 @@ import socket
 import ssl
 from multiprocessing import Queue
 from typing import Optional, Tuple, List
+import logging.handlers
+from syslog_rfc5424_formatter import RFC5424Formatter
+
 
 from paho.mqtt.client import (
     Client as MQTTClient,
@@ -32,6 +35,9 @@ class MqttHandler:
         insecure: bool = False,
         mqtt_version: str = "5.0",
         log_level: str = "INFO",
+        syslog_host: str = None,
+        syslog_port: int = 514,
+        syslog_msgid: str = None
     ):
         self.name = name
         self.host = host
@@ -52,6 +58,15 @@ class MqttHandler:
         self.clean_start_or_session = qos == 0
         self.rx_queue: Queue = Queue(maxsize=1000)
         self.logger = logging.getLogger(__name__)
+        if syslog_host is not None:
+          syslog_handler = logging.handlers.SysLogHandler(
+            address=(syslog_host, syslog_port),
+            facility=logging.handlers.SysLogHandler.LOG_USER
+          )
+          syslog_handler.setFormatter(RFC5424Formatter(msgid=syslog_msgid))
+          self.logger.addHandler(syslog_handler)
+          self.logger.info("MQTT logger successfully switched to syslog!")
+
 
     def _on_connect(self, client, userdata, flags, reason_code, properties):
         if isinstance(flags, dict):  # MQTTv5
