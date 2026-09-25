@@ -715,6 +715,8 @@ def setup_modbus_handlers(args, mqtt_handler: Optional[MqttHandler] = None):
         else:
             modbus_handler.close()
     log = logging.getLogger('pymodbus')
+    log.setLevel(logging.ERROR)
+
     if args.syslog_host is not None:
       syslog_handler = logging.handlers.SysLogHandler(
         address=(args.syslog_host, args.syslog_port),
