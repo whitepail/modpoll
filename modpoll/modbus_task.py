@@ -48,9 +48,6 @@ class Poller:
         start_address: int,
         size: int,
         endian: str,
-        syslog_host: str = None,
-        syslog_port: int = 514,
-        syslog_msgid: str = None
 
     ):
         self.device = device
@@ -62,14 +59,6 @@ class Poller:
         self.disabled = False
         self.failcounter = 0
         self.logger = logging.getLogger(__name__)
-        if syslog_host is not None:
-          syslog_handler = logging.handlers.SysLogHandler(
-            address=(syslog_host, syslog_port),
-            facility=logging.handlers.SysLogHandler.LOG_USER
-          )
-          syslog_handler.setFormatter(RFC5424Formatter(msgid=syslog_msgid))
-          self.logger.addHandler(syslog_handler)
-          self.logger.info("Poller successfully switched to syslog!")
 
     def poll(self, master) -> bool:
         try:
@@ -393,9 +382,6 @@ class ModbusHandler:
           syslog_handler.setFormatter(RFC5424Formatter(msgid=syslog_msgid))
           self.logger.addHandler(syslog_handler)
           self.logger.info("Modbus task successfully switched to syslog!")
-        self.syslog_host = syslog_host
-        self.syslog_port = syslog_port
-        self.syslog_msgid = syslog_msgid
 
     def load_config(self) -> bool:
         self.logger.info(f"Loading config from: {self.config_file}")
@@ -486,7 +472,7 @@ class ModbusHandler:
             return None
         if not self._validate_poller_size(function_code, size):
             return None
-        return Poller(current_device, function_code, start_address, size, endian, syslog_host=self.syslog_host, syslog_port=self.syslog_port, syslog_msgid=self.syslog_msgid)
+        return Poller(current_device, function_code, start_address, size, endian)
 
     def _get_function_code(self, fc):
         fc_map = {
@@ -728,6 +714,16 @@ def setup_modbus_handlers(args, mqtt_handler: Optional[MqttHandler] = None):
             modbus_handlers.append(modbus_handler)
         else:
             modbus_handler.close()
+    log = logging.getLogger('pymodbus')
+    if args.syslog_host is not None:
+      syslog_handler = logging.handlers.SysLogHandler(
+        address=(args.syslog_host, args.syslog_port),
+        facility=logging.handlers.SysLogHandler.LOG_USER
+      )
+      syslog_handler.setFormatter(RFC5424Formatter(msgid=args.syslog_msgid))
+      log.addHandler(syslog_handler)
+      log.info("Pymodbus successfully switched to syslog!")
+
     return modbus_handlers
 
 
