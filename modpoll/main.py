@@ -1,5 +1,6 @@
 import json
 import logging
+import logging.handlers
 import re
 import signal
 import sys
@@ -43,6 +44,18 @@ def app(name="modpoll"):
     setup_logging(args.loglevel, LOG_SIMPLE)
     global logger
     logger = logging.getLogger(__name__)
+
+    syslog_handler = logging.handlers.SysLogHandler(
+        address=('localhost', 5514), 
+        facility=logging.handlers.SysLogHandler.LOG_USER
+    )
+
+    formatter = logging.Formatter('%(name)s[%(process)d]: %(levelname)s %(message)s')
+    syslog_handler.setFormatter(formatter)
+
+    logger.addHandler(syslog_handler)
+
+    logger.info("Application successfully switched to syslog!")
 
     # setup mqtt
     if not args.mqtt_host:
