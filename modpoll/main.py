@@ -149,9 +149,12 @@ def app(name="modpoll"):
                         f"Received request to write data for device {device_name}"
                     )
                     group_count = len(match.groups())
+                    if (group_count > 1):
+                        fieldname = match.group(2)
+                    else:
+                        fieldname = None
                     try:
-                        if group_count > 1:
-                            fieldname = match.group(2)
+                        if (fieldname is not None) and (fieldname != '_'):
                             data_string = payload.decode("utf-8")
                             if data_string == 'True':
                                 value = 1
@@ -168,6 +171,7 @@ def app(name="modpoll"):
                             object_type = reg["object_type"]
                             address = reg["address"]
                             value = reg["value"]
+                            logger.warning(f"Reference {object_type} value {value} address {address} to be written")
 
                         device_found = False
                         for modbus_handler in modbus_handlers:
@@ -175,7 +179,7 @@ def app(name="modpoll"):
                                 if dev.name == device_name:
                                    device_found = True
                                    write_success = False
-                                   if group_count > 1:
+                                   if (fieldname is not None) and (fieldname != '_') :
                                        if isinstance(dev.references[fieldname], Reference):
                                            if isinstance(dev.references[fieldname].poller, Poller):
                                                address = dev.references[fieldname].address
@@ -191,6 +195,7 @@ def app(name="modpoll"):
                                                    logger.warning(f"Reference {fieldname} has unknown type. Can write only coil and holding register")
                                                    break;
                                                value = dev.references[fieldname].update_value_write(value)
+                                               value = int(value)
                                                if value < 0:
                                                  value = 65536 + value
                                                logger.info(f"Trying to write reference {fieldname}: object_type={object_type}, device={device_name}, address={address}, value={value}")

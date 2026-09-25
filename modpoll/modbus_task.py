@@ -629,7 +629,8 @@ class ModbusHandler:
                         else:
                             self.mqtt_handler.publish(topic, ref_val)
 
-            if payload and not self.mqtt_single_publish:
+
+            if payload:
                 if timestamp is not None:
                     payload["timestamp"] = timestamp
                 topic = self.mqtt_publish_topic_pattern.replace(
